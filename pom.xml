@@ -70,6 +70,7 @@
 			<scope>test</scope>
 		</dependency>
 
+		<!-- Dependencias manuales para el desarrollo -->
 		<!-- Dependencia: H2 embebida -->
 		<dependency>
 			<groupId>com.h2database</groupId>
