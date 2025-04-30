@@ -6,6 +6,7 @@ import com.tupyme.conciliador.dto.response.SuccessResponse;
 import com.tupyme.conciliador.dto.request.UserDTO;
 import com.tupyme.conciliador.model.User;
 import com.tupyme.conciliador.repository.UserRepository;
+import com.tupyme.conciliador.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,48 +20,31 @@ import java.util.Optional;
 public class UserController {
 
     // Dependencias inyectadas (repositorio y codificador de contraseñas)
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final UserService userService;
 
-    public UserController(UserRepository userRepository, PasswordEncoder passwordEncoder) {
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
+    public UserController(UserService userService) {
+        this.userService = userService;
     }
 
     // Registro de un nuevo usuario
     @PostMapping("/register")
-    public ResponseEntity<User> register(@RequestBody @Valid UserDTO userDTO) {
-        // Creación de un nuevo objeto User a partir de UserDTO
-        User user = new User();
-        user.setName(userDTO.getName());
-        user.setEmail(userDTO.getEmail());
-        // Encriptación de la contraseña
-        user.setPassword(passwordEncoder.encode(userDTO.getPassword()));
-
-        // Guardado del usuario en la base de datos
-        User savedUser = userRepository.save(user);
-        return ResponseEntity.ok(savedUser); // Retorna el usuario guardado en la respuesta
+    public ResponseEntity<?> register(@RequestBody @Valid UserDTO userDTO) {
+        try {
+            // Guardado del usuario en la base de datos
+            User user = userService.registerUser(userDTO);
+            return ResponseEntity.ok(user); // Retorna el usuario guardado en la respuesta
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(e.getMessage()));
+        }
     }
 
     // Login de un usuario
     @PostMapping("/login")
-    public ResponseEntity<?> userLogin(@RequestBody @Valid LoginDTO loginDTO) {
-        // Buscar al usuario por correo
-        Optional<User> optionalUser = userRepository.findByEmail(loginDTO.getEmail());
-
-        // Si no existe el usuario con el correo proporcionado
-        if (optionalUser.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse("Correo o contraseña incorrectos"));
-        }
-
-        // Obtener el usuario desde el Optional
-        User user = optionalUser.get();
-
-        // Verificar que la contraseña ingresada coincide con la almacenada
-        boolean matchPassword = passwordEncoder.matches(loginDTO.getPassword(), user.getPassword());
+    public ResponseEntity<?> login(@RequestBody @Valid LoginDTO loginDTO) {
+        boolean success = userService.loginUser (loginDTO);
 
         // Si las contraseñas no coinciden
-        if (!matchPassword) {
+        if (!success) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse("Correo o contraseña incorrectos"));
         }
 
